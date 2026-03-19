@@ -2,7 +2,7 @@
 // KONFIGURASI
 // ============================================
 // GANTI DENGAN URL WEB APP GOOGLE APPS SCRIPT ANDA
-const SCRIPT_URL = 'https://script.google.com/macros/s/xxxxxxxxxxxxx/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw7D8BSMzoZ_WMD2eOQ8qdPQlwPDbUCnLOOQaIcNNftv3iqNf05qM5yxK4zzu0elsdX-A/exec';
 
 // ============================================
 // VARIABEL GLOBAL
