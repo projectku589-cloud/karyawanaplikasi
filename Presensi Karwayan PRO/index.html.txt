@@ -1,0 +1,1787 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sistem Presensi Karyawan</title>
+  
+  <!-- Meta untuk izin kamera (tambahan) -->
+  <meta name="permissions-policy" content="camera=(self)">
+  
+  <!-- Bootstrap 5 CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Bootstrap Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- SweetAlert2 -->
+  <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  
+  <style>
+    /* ============================================
+       CSS STYLES (Sama seperti sebelumnya)
+       ============================================ */
+    :root {
+      --primary: #0d6efd;
+      --primary-dark: #0a58ca;
+      --primary-light: #6ea8fe;
+      --secondary: #64748b;
+      --accent: #3b82f6;
+      --bg-light: #f8fafc;
+      --bg-card: #ffffff;
+      --text-dark: #0f172a;
+      --text-muted: #64748b;
+      --border-color: #e2e8f0;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --gradient-primary: linear-gradient(135deg, #0d6efd 0%, #0a58ca 50%, #1e40af 100%);
+      --gradient-card: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+      --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+      --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
+      --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
+      --shadow-xl: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);
+    }
+    
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background: var(--bg-light);
+      color: var(--text-dark);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+    
+    /* Login Page Styles */
+    .login-wrapper {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--gradient-primary);
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .login-wrapper::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 60%);
+      animation: pulse 15s ease-in-out infinite;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); opacity: 0.5; }
+      50% { transform: scale(1.1); opacity: 0.3; }
+    }
+    
+    .login-card {
+      background: var(--bg-card);
+      border-radius: 24px;
+      box-shadow: var(--shadow-xl);
+      overflow: hidden;
+      width: 100%;
+      max-width: 420px;
+      margin: 20px;
+      position: relative;
+      z-index: 1;
+    }
+    
+    .login-header {
+      background: var(--gradient-primary);
+      padding: 40px 30px;
+      text-align: center;
+      position: relative;
+    }
+    
+    .login-header::after {
+      content: '';
+      position: absolute;
+      bottom: -30px;
+      left: 0;
+      right: 0;
+      height: 60px;
+      background: var(--bg-card);
+      border-radius: 50% 50% 0 0;
+    }
+    
+    .login-logo {
+      width: 80px;
+      height: 80px;
+      background: rgba(255,255,255,0.2);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 20px;
+      backdrop-filter: blur(10px);
+    }
+    
+    .login-logo i {
+      font-size: 40px;
+      color: white;
+    }
+    
+    .login-header h1 {
+      color: white;
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 5px;
+    }
+    
+    .login-header p {
+      color: rgba(255,255,255,0.8);
+      font-size: 14px;
+    }
+    
+    .login-body {
+      padding: 50px 30px 30px;
+    }
+    
+    .form-floating {
+      margin-bottom: 20px;
+    }
+    
+    .form-floating .form-control {
+      border: 2px solid var(--border-color);
+      border-radius: 12px;
+      padding: 16px;
+      height: 56px;
+      font-size: 15px;
+      transition: all 0.3s ease;
+    }
+    
+    .form-floating .form-control:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 4px rgba(13, 110, 253, 0.1);
+    }
+    
+    .form-floating label {
+      padding: 16px;
+      color: var(--text-muted);
+    }
+    
+    .btn-login {
+      width: 100%;
+      padding: 14px;
+      border-radius: 12px;
+      font-weight: 600;
+      font-size: 16px;
+      background: var(--gradient-primary);
+      border: none;
+      color: white;
+      transition: all 0.3s ease;
+    }
+    
+    .btn-login:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(13, 110, 253, 0.3);
+      color: white;
+    }
+    
+    .btn-register-link {
+      display: block;
+      text-align: center;
+      margin-top: 20px;
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 500;
+      transition: all 0.3s ease;
+    }
+    
+    .btn-register-link:hover {
+      color: var(--primary-dark);
+    }
+    
+    /* App Styles */
+    .app-wrapper {
+      display: none;
+      min-height: 100vh;
+    }
+    
+    /* Top Navigation */
+    .top-nav {
+      background: var(--bg-card);
+      box-shadow: var(--shadow-md);
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 1000;
+      padding: 10px 0;
+    }
+    
+    .nav-container {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+    
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+      font-size: 18px;
+      color: var(--primary);
+    }
+    
+    .nav-brand i {
+      font-size: 28px;
+    }
+    
+    .nav-menu {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    
+    .nav-item {
+      position: relative;
+    }
+    
+    .nav-link {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 8px 16px;
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 12px;
+      font-weight: 500;
+      border-radius: 12px;
+      transition: all 0.3s ease;
+      cursor: pointer;
+    }
+    
+    .nav-link i {
+      font-size: 20px;
+      margin-bottom: 4px;
+    }
+    
+    .nav-link:hover,
+    .nav-link.active {
+      color: var(--primary);
+      background: rgba(13, 110, 253, 0.1);
+    }
+    
+    .nav-link.active::after {
+      content: '';
+      position: absolute;
+      bottom: -10px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 30px;
+      height: 3px;
+      background: var(--primary);
+      border-radius: 3px;
+    }
+    
+    .nav-profile {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .nav-profile-img {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid var(--primary);
+    }
+    
+    .nav-profile-info {
+      display: none;
+    }
+    
+    .nav-profile-name {
+      font-weight: 600;
+      font-size: 14px;
+      color: var(--text-dark);
+    }
+    
+    .nav-profile-role {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+    
+    .dropdown-toggle::after {
+      display: none;
+    }
+    
+    /* Main Content */
+    .main-content {
+      padding-top: 90px;
+      padding-bottom: 30px;
+      min-height: 100vh;
+    }
+    
+    .content-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 20px;
+    }
+    
+    /* Page Header */
+    .page-header {
+      margin-bottom: 30px;
+    }
+    
+    .page-title {
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--text-dark);
+      margin-bottom: 5px;
+    }
+    
+    .page-subtitle {
+      color: var(--text-muted);
+      font-size: 15px;
+    }
+    
+    /* Cards */
+    .card-custom {
+      background: var(--bg-card);
+      border-radius: 20px;
+      box-shadow: var(--shadow-md);
+      border: none;
+      overflow: hidden;
+      transition: all 0.3s ease;
+    }
+    
+    .card-custom:hover {
+      box-shadow: var(--shadow-lg);
+    }
+    
+    .card-header-custom {
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    
+    .card-title-custom {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text-dark);
+      margin: 0;
+    }
+    
+    .card-body-custom {
+      padding: 24px;
+    }
+    
+    /* Stats Cards */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 15px;
+      margin-bottom: 25px;
+    }
+    
+    .stat-card {
+      background: var(--bg-card);
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: var(--shadow-sm);
+      border: 1px solid var(--border-color);
+      transition: all 0.3s ease;
+    }
+    
+    .stat-card:hover {
+      transform: translateY(-3px);
+      box-shadow: var(--shadow-md);
+    }
+    
+    .stat-card.primary {
+      background: var(--gradient-card);
+      color: white;
+      border: none;
+    }
+    
+    .stat-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 15px;
+    }
+    
+    .stat-card.primary .stat-icon {
+      background: rgba(255,255,255,0.2);
+    }
+    
+    .stat-icon.blue {
+      background: rgba(13, 110, 253, 0.1);
+      color: var(--primary);
+    }
+    
+    .stat-icon.green {
+      background: rgba(16, 185, 129, 0.1);
+      color: var(--success);
+    }
+    
+    .stat-icon.orange {
+      background: rgba(245, 158, 11, 0.1);
+      color: var(--warning);
+    }
+    
+    .stat-icon.red {
+      background: rgba(239, 68, 68, 0.1);
+      color: var(--danger);
+    }
+    
+    .stat-icon i {
+      font-size: 24px;
+    }
+    
+    .stat-value {
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+    
+    .stat-label {
+      font-size: 13px;
+      opacity: 0.8;
+    }
+    
+    /* Profile Card */
+    .profile-card {
+      background: var(--gradient-card);
+      border-radius: 20px;
+      padding: 30px;
+      color: white;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .profile-card::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      right: -50%;
+      width: 100%;
+      height: 100%;
+      background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 60%);
+    }
+    
+    .profile-img-wrapper {
+      position: relative;
+      display: inline-block;
+      margin-bottom: 20px;
+    }
+    
+    .profile-img {
+      width: 100px;
+      height: 100px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 4px solid rgba(255,255,255,0.3);
+    }
+    
+    .profile-status {
+      position: absolute;
+      bottom: 5px;
+      right: 5px;
+      width: 24px;
+      height: 24px;
+      background: var(--success);
+      border-radius: 50%;
+      border: 3px solid white;
+    }
+    
+    .profile-name {
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 5px;
+    }
+    
+    .profile-role {
+      font-size: 14px;
+      opacity: 0.9;
+      margin-bottom: 20px;
+    }
+    
+    .profile-stats {
+      display: flex;
+      gap: 30px;
+    }
+    
+    .profile-stat {
+      text-align: center;
+    }
+    
+    .profile-stat-value {
+      font-size: 24px;
+      font-weight: 700;
+    }
+    
+    .profile-stat-label {
+      font-size: 12px;
+      opacity: 0.8;
+    }
+    
+    /* Today Status */
+    .today-status {
+      background: var(--bg-card);
+      border-radius: 16px;
+      padding: 20px;
+      margin-top: 20px;
+      border: 1px solid var(--border-color);
+    }
+    
+    .today-status h4 {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 15px;
+    }
+    
+    .time-display {
+      display: flex;
+      justify-content: space-between;
+      gap: 15px;
+    }
+    
+    .time-box {
+      flex: 1;
+      text-align: center;
+      padding: 15px;
+      background: var(--bg-light);
+      border-radius: 12px;
+    }
+    
+    .time-box-label {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 5px;
+    }
+    
+    .time-box-value {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--primary);
+    }
+    
+    .time-box-value.late {
+      color: var(--danger);
+    }
+    
+    /* Chart Container */
+    .chart-container {
+      position: relative;
+      height: 300px;
+    }
+    
+    /* Presensi Page */
+    .presensi-camera {
+      background: var(--bg-light);
+      border-radius: 20px;
+      padding: 30px;
+      text-align: center;
+      margin-bottom: 25px;
+    }
+    
+    .camera-preview {
+      width: 100%;
+      max-width: 400px;
+      aspect-ratio: 3/4;
+      background: #1a1a1a;
+      border-radius: 16px;
+      margin: 0 auto 20px;
+      overflow: hidden;
+      position: relative;
+    }
+    
+    .camera-preview video,
+    .camera-preview canvas,
+    .camera-preview img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    
+    .camera-placeholder {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+      color: white;
+    }
+    
+    .camera-placeholder i {
+      font-size: 48px;
+      margin-bottom: 10px;
+    }
+    
+    .btn-camera {
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 12px 30px;
+      border-radius: 12px;
+      font-weight: 600;
+      margin: 5px;
+      transition: all 0.3s ease;
+    }
+    
+    .btn-camera:hover {
+      background: var(--primary-dark);
+      color: white;
+      transform: translateY(-2px);
+    }
+    
+    .btn-camera.success {
+      background: var(--success);
+    }
+    
+    .btn-camera.success:hover {
+      background: #059669;
+    }
+    
+    .btn-camera.danger {
+      background: var(--danger);
+    }
+    
+    .location-info {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 15px;
+      background: var(--bg-card);
+      border-radius: 12px;
+      margin-top: 20px;
+      border: 1px solid var(--border-color);
+    }
+    
+    .location-info i {
+      color: var(--primary);
+      font-size: 20px;
+    }
+    
+    /* Presensi Buttons */
+    .presensi-buttons {
+      display: flex;
+      gap: 15px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    
+    .btn-presensi {
+      flex: 1;
+      min-width: 150px;
+      max-width: 200px;
+      padding: 20px;
+      border-radius: 16px;
+      font-weight: 600;
+      font-size: 16px;
+      border: none;
+      transition: all 0.3s ease;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .btn-presensi i {
+      font-size: 28px;
+    }
+    
+    .btn-presensi.masuk {
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      color: white;
+    }
+    
+    .btn-presensi.keluar {
+      background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+      color: white;
+    }
+    
+    .btn-presensi:hover {
+      transform: translateY(-3px);
+      box-shadow: var(--shadow-lg);
+      color: white;
+    }
+    
+    .btn-presensi:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+    
+    /* History Table */
+    .history-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    
+    .history-table th {
+      text-align: left;
+      padding: 15px;
+      background: var(--bg-light);
+      font-weight: 600;
+      font-size: 13px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    .history-table td {
+      padding: 15px;
+      border-bottom: 1px solid var(--border-color);
+      font-size: 14px;
+    }
+    
+    .history-table tr:last-child td {
+      border-bottom: none;
+    }
+    
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    
+    .status-badge.success {
+      background: rgba(16, 185, 129, 0.1);
+      color: var(--success);
+    }
+    
+    .status-badge.warning {
+      background: rgba(245, 158, 11, 0.1);
+      color: var(--warning);
+    }
+    
+    .status-badge.danger {
+      background: rgba(239, 68, 68, 0.1);
+      color: var(--danger);
+    }
+    
+    .status-badge.pending {
+      background: rgba(100, 116, 139, 0.1);
+      color: var(--secondary);
+    }
+    
+    .status-badge.approved {
+      background: rgba(16, 185, 129, 0.1);
+      color: var(--success);
+    }
+    
+    .status-badge.rejected {
+      background: rgba(239, 68, 68, 0.1);
+      color: var(--danger);
+    }
+    
+    /* Form Styles */
+    .form-label-custom {
+      font-weight: 600;
+      font-size: 14px;
+      color: var(--text-dark);
+      margin-bottom: 8px;
+      display: block;
+    }
+    
+    .form-control-custom {
+      border: 2px solid var(--border-color);
+      border-radius: 12px;
+      padding: 12px 16px;
+      font-size: 15px;
+      transition: all 0.3s ease;
+      width: 100%;
+    }
+    
+    .form-control-custom:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 4px rgba(13, 110, 253, 0.1);
+      outline: none;
+    }
+    
+    .btn-submit {
+      background: var(--gradient-primary);
+      color: white;
+      border: none;
+      padding: 14px 30px;
+      border-radius: 12px;
+      font-weight: 600;
+      font-size: 15px;
+      transition: all 0.3s ease;
+    }
+    
+    .btn-submit:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(13, 110, 253, 0.3);
+      color: white;
+    }
+    
+    /* User List */
+    .user-list {
+      display: grid;
+      gap: 15px;
+    }
+    
+    .user-item {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      padding: 20px;
+      background: var(--bg-light);
+      border-radius: 16px;
+      transition: all 0.3s ease;
+    }
+    
+    .user-item:hover {
+      background: var(--bg-card);
+      box-shadow: var(--shadow-md);
+    }
+    
+    .user-avatar {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      object-fit: cover;
+      background: var(--gradient-primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 700;
+      font-size: 18px;
+    }
+    
+    .user-info {
+      flex: 1;
+    }
+    
+    .user-name {
+      font-weight: 600;
+      color: var(--text-dark);
+      margin-bottom: 2px;
+    }
+    
+    .user-role {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+    
+    .user-actions {
+      display: flex;
+      gap: 8px;
+    }
+    
+    .btn-action {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      border: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s ease;
+      cursor: pointer;
+    }
+    
+    .btn-action.success {
+      background: rgba(16, 185, 129, 0.1);
+      color: var(--success);
+    }
+    
+    .btn-action.success:hover {
+      background: var(--success);
+      color: white;
+    }
+    
+    .btn-action.danger {
+      background: rgba(239, 68, 68, 0.1);
+      color: var(--danger);
+    }
+    
+    .btn-action.danger:hover {
+      background: var(--danger);
+      color: white;
+    }
+    
+    /* Page Sections */
+    .page-section {
+      display: none;
+    }
+    
+    .page-section.active {
+      display: block;
+      animation: fadeIn 0.3s ease;
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    /* Responsive */
+    @media (min-width: 768px) {
+      .stats-grid {
+        grid-template-columns: repeat(4, 1fr);
+      }
+      
+      .nav-profile-info {
+        display: block;
+      }
+      
+      .nav-link {
+        flex-direction: row;
+        gap: 8px;
+      }
+      
+      .nav-link i {
+        margin-bottom: 0;
+      }
+    }
+    
+    @media (min-width: 992px) {
+      .dashboard-grid {
+        display: grid;
+        grid-template-columns: 350px 1fr;
+        gap: 25px;
+      }
+      
+      .profile-section {
+        position: sticky;
+        top: 100px;
+      }
+    }
+    
+    @media (max-width: 767px) {
+      .nav-menu {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: var(--bg-card);
+        padding: 10px;
+        box-shadow: 0 -5px 20px rgba(0,0,0,0.1);
+        justify-content: space-around;
+        border-radius: 20px 20px 0 0;
+      }
+      
+      .nav-link.active::after {
+        bottom: auto;
+        top: -10px;
+      }
+      
+      .main-content {
+        padding-bottom: 100px;
+      }
+      
+      .nav-profile {
+        display: none;
+      }
+      
+      .page-title {
+        font-size: 24px;
+      }
+      
+      .presensi-buttons {
+        flex-direction: column;
+      }
+      
+      .btn-presensi {
+        max-width: none;
+      }
+    }
+    
+    /* File Upload */
+    .file-upload {
+      border: 2px dashed var(--border-color);
+      border-radius: 16px;
+      padding: 30px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    
+    .file-upload:hover {
+      border-color: var(--primary);
+      background: rgba(13, 110, 253, 0.05);
+    }
+    
+    .file-upload i {
+      font-size: 40px;
+      color: var(--primary);
+      margin-bottom: 10px;
+    }
+    
+    .file-upload p {
+      color: var(--text-muted);
+      margin: 0;
+    }
+    
+    .file-upload input {
+      display: none;
+    }
+    
+    /* Cuti Cards */
+    .cuti-card {
+      background: var(--bg-card);
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 15px;
+      border: 1px solid var(--border-color);
+      transition: all 0.3s ease;
+    }
+    
+    .cuti-card:hover {
+      box-shadow: var(--shadow-md);
+    }
+    
+    .cuti-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 15px;
+    }
+    
+    .cuti-type {
+      font-weight: 600;
+      color: var(--primary);
+      margin-bottom: 5px;
+    }
+    
+    .cuti-date {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+    
+    .cuti-body {
+      font-size: 14px;
+      color: var(--text-dark);
+    }
+    
+    /* Hidden class */
+    .hidden {
+      display: none !important;
+    }
+    
+    /* Loading Spinner */
+    .spinner-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(255,255,255,0.9);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+    }
+    
+    .spinner {
+      width: 50px;
+      height: 50px;
+      border: 4px solid var(--border-color);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    
+    /* Profile Photo Upload */
+    .photo-upload-wrapper {
+      position: relative;
+      display: inline-block;
+    }
+    
+    .photo-upload-wrapper .profile-img {
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    
+    .photo-upload-wrapper:hover .profile-img {
+      filter: brightness(0.8);
+    }
+    
+    .photo-upload-icon {
+      position: absolute;
+      bottom: 0;
+      right: 0;
+      width: 32px;
+      height: 32px;
+      background: var(--primary);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      border: 2px solid white;
+    }
+    
+    .photo-upload-wrapper input {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <!-- Loading Spinner -->
+  <div class="spinner-overlay" id="loadingSpinner">
+    <div class="spinner"></div>
+  </div>
+
+  <!-- Login Page -->
+  <div class="login-wrapper" id="loginPage">
+    <div class="login-card">
+      <div class="login-header">
+        <div class="login-logo">
+          <i class="bi bi-person-badge"></i>
+        </div>
+        <h1>Sistem Presensi</h1>
+        <p>Silakan login untuk melanjutkan</p>
+      </div>
+      <div class="login-body">
+        <form id="loginForm">
+          <div class="form-floating">
+            <input type="text" class="form-control" id="loginUsername" placeholder="Username" required>
+            <label><i class="bi bi-person me-2"></i>Username</label>
+          </div>
+          <div class="form-floating">
+            <input type="password" class="form-control" id="loginPassword" placeholder="Password" required>
+            <label><i class="bi bi-lock me-2"></i>Password</label>
+          </div>
+          <button type="submit" class="btn btn-login">
+            <i class="bi bi-box-arrow-in-right me-2"></i>Masuk
+          </button>
+        </form>
+        <a href="#" class="btn-register-link" onclick="showRegisterForm()">
+          Belum punya akun? Daftar disini
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Register Page -->
+  <div class="login-wrapper hidden" id="registerPage">
+    <div class="login-card" style="max-width: 500px;">
+      <div class="login-header">
+        <div class="login-logo">
+          <i class="bi bi-person-plus"></i>
+        </div>
+        <h1>Daftar Akun</h1>
+        <p>Isi form berikut untuk mendaftar</p>
+      </div>
+      <div class="login-body">
+        <form id="registerForm">
+          <div class="row">
+            <div class="col-md-6">
+              <div class="form-floating mb-3">
+                <input type="text" class="form-control" id="regUsername" placeholder="Username" required>
+                <label>Username</label>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="form-floating mb-3">
+                <input type="password" class="form-control" id="regPassword" placeholder="Password" required>
+                <label>Password</label>
+              </div>
+            </div>
+          </div>
+          <div class="form-floating mb-3">
+            <input type="text" class="form-control" id="regNama" placeholder="Nama Lengkap" required>
+            <label>Nama Lengkap</label>
+          </div>
+          <div class="row">
+            <div class="col-md-6">
+              <div class="form-floating mb-3">
+                <input type="email" class="form-control" id="regEmail" placeholder="Email" required>
+                <label>Email</label>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="form-floating mb-3">
+                <input type="tel" class="form-control" id="regTelepon" placeholder="No. Telepon">
+                <label>No. Telepon</label>
+              </div>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-md-6">
+              <div class="form-floating mb-3">
+                <select class="form-select" id="regJenisKelamin" required>
+                  <option value="">Pilih</option>
+                  <option value="Laki-laki">Laki-laki</option>
+                  <option value="Perempuan">Perempuan</option>
+                </select>
+                <label>Jenis Kelamin</label>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="form-floating mb-3">
+                <input type="text" class="form-control" id="regJabatan" placeholder="Jabatan">
+                <label>Jabatan</label>
+              </div>
+            </div>
+          </div>
+          <div class="form-floating mb-3">
+            <textarea class="form-control" id="regAlamat" placeholder="Alamat" style="height: 80px;"></textarea>
+            <label>Alamat</label>
+          </div>
+          <button type="submit" class="btn btn-login">
+            <i class="bi bi-person-plus me-2"></i>Daftar
+          </button>
+        </form>
+        <a href="#" class="btn-register-link" onclick="showLoginForm()">
+          Sudah punya akun? Login disini
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- App Wrapper -->
+  <div class="app-wrapper" id="appWrapper">
+    <!-- Top Navigation -->
+    <nav class="top-nav">
+      <div class="nav-container">
+        <div class="nav-brand">
+          <i class="bi bi-building"></i>
+          <span>Presensi</span>
+        </div>
+        
+        <ul class="nav-menu">
+          <li class="nav-item">
+            <a class="nav-link active" onclick="showPage('dashboard')" data-page="dashboard">
+              <i class="bi bi-speedometer2"></i>
+              <span>Dashboard</span>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" onclick="showPage('presensi')" data-page="presensi">
+              <i class="bi bi-geo-alt"></i>
+              <span>Presensi</span>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" onclick="showPage('cuti')" data-page="cuti">
+              <i class="bi bi-calendar-check"></i>
+              <span>Cuti</span>
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" onclick="showPage('profil')" data-page="profil">
+              <i class="bi bi-person-circle"></i>
+              <span>Profil</span>
+            </a>
+          </li>
+          <li class="nav-item admin-only hidden" id="navUser">
+            <a class="nav-link" onclick="showPage('user')" data-page="user">
+              <i class="bi bi-people"></i>
+              <span>User</span>
+            </a>
+          </li>
+        </ul>
+        
+        <div class="nav-profile dropdown">
+          <div class="dropdown-toggle" data-bs-toggle="dropdown">
+            <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect fill='%230d6efd' width='100' height='100'/%3E%3Ctext x='50' y='50' dominant-baseline='central' text-anchor='middle' fill='white' font-size='40'%3EU%3C/text%3E%3C/svg%3E" 
+                 alt="Profile" class="nav-profile-img" id="navProfileImg">
+          </div>
+          <div class="dropdown-menu dropdown-menu-end" style="min-width: 200px;">
+            <div class="px-3 py-2 border-bottom">
+              <div class="nav-profile-name" id="navProfileName">User</div>
+              <div class="nav-profile-role" id="navProfileRole">Role</div>
+            </div>
+            <a class="dropdown-item py-2" href="#" onclick="showPage('profil')">
+              <i class="bi bi-person me-2"></i>Profil
+            </a>
+            <div class="dropdown-divider"></div>
+            <a class="dropdown-item py-2 text-danger" href="#" onclick="logout()">
+              <i class="bi bi-box-arrow-right me-2"></i>Logout
+            </a>
+          </div>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <div class="content-container">
+        
+        <!-- Dashboard Page -->
+        <section class="page-section active" id="page-dashboard">
+          <div class="page-header">
+            <h1 class="page-title">Dashboard</h1>
+            <p class="page-subtitle">Selamat datang kembali, <span id="dashboardGreeting">User</span>!</p>
+          </div>
+          
+          <div class="dashboard-grid">
+            <!-- Profile Section -->
+            <div class="profile-section">
+              <div class="profile-card">
+                <div class="profile-img-wrapper">
+                  <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect fill='%23ffffff' width='100' height='100'/%3E%3Ctext x='50' y='50' dominant-baseline='central' text-anchor='middle' fill='%231e40af' font-size='40'%3EU%3C/text%3E%3C/svg%3E" 
+                       alt="Profile" class="profile-img" id="profileCardImg">
+                  <div class="profile-status"></div>
+                </div>
+                <h2 class="profile-name" id="profileCardName">User Name</h2>
+                <p class="profile-role" id="profileCardRole">Jabatan</p>
+                <div class="profile-stats">
+                  <div class="profile-stat">
+                    <div class="profile-stat-value" id="profileKuotaCuti">12</div>
+                    <div class="profile-stat-label">Sisa Cuti</div>
+                  </div>
+                  <div class="profile-stat">
+                    <div class="profile-stat-value" id="profileHadir">0</div>
+                    <div class="profile-stat-label">Hadir Bulan Ini</div>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="today-status">
+                <h4><i class="bi bi-clock me-2"></i>Status Hari Ini</h4>
+                <div class="time-display">
+                  <div class="time-box">
+                    <div class="time-box-label">Jam Masuk</div>
+                    <div class="time-box-value" id="todayJamMasuk">--:--</div>
+                  </div>
+                  <div class="time-box">
+                    <div class="time-box-label">Jam Keluar</div>
+                    <div class="time-box-value" id="todayJamKeluar">--:--</div>
+                  </div>
+                </div>
+                <div class="mt-3 text-center" id="todayLateInfo" style="display: none;">
+                  <span class="status-badge warning">
+                    <i class="bi bi-exclamation-triangle me-1"></i>
+                    Terlambat <span id="todayLateMinutes">0</span> menit
+                  </span>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Stats Section -->
+            <div>
+              <div class="stats-grid">
+                <div class="stat-card primary">
+                  <div class="stat-icon">
+                    <i class="bi bi-calendar-check"></i>
+                  </div>
+                  <div class="stat-value" id="statHadir">0</div>
+                  <div class="stat-label">Total Kehadiran</div>
+                </div>
+                <div class="stat-card">
+                  <div class="stat-icon green">
+                    <i class="bi bi-check-circle"></i>
+                  </div>
+                  <div class="stat-value" id="statTepatWaktu">0</div>
+                  <div class="stat-label">Tepat Waktu</div>
+                </div>
+                <div class="stat-card">
+                  <div class="stat-icon orange">
+                    <i class="bi bi-clock-history"></i>
+                  </div>
+                  <div class="stat-value" id="statTerlambat">0</div>
+                  <div class="stat-label">Terlambat</div>
+                </div>
+                <div class="stat-card">
+                  <div class="stat-icon red">
+                    <i class="bi bi-x-circle"></i>
+                  </div>
+                  <div class="stat-value" id="statMenitTerlambat">0</div>
+                  <div class="stat-label">Menit Terlambat</div>
+                </div>
+              </div>
+              
+              <!-- Chart -->
+              <div class="card-custom">
+                <div class="card-header-custom">
+                  <h3 class="card-title-custom">
+                    <i class="bi bi-graph-up me-2"></i>Grafik Kehadiran
+                  </h3>
+                </div>
+                <div class="card-body-custom">
+                  <div class="chart-container">
+                    <canvas id="attendanceChart"></canvas>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Recent History -->
+              <div class="card-custom mt-4">
+                <div class="card-header-custom">
+                  <h3 class="card-title-custom">
+                    <i class="bi bi-clock-history me-2"></i>Riwayat Terakhir
+                  </h3>
+                </div>
+                <div class="card-body-custom p-0">
+                  <div class="table-responsive">
+                    <table class="history-table">
+                      <thead>
+                        <tr>
+                          <th>Tanggal</th>
+                          <th>Masuk</th>
+                          <th>Keluar</th>
+                          <th>Status</th>
+                        </tr>
+                      </thead>
+                      <tbody id="recentHistory">
+                        <tr>
+                          <td colspan="4" class="text-center text-muted py-4">Belum ada data</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Presensi Page -->
+        <section class="page-section" id="page-presensi">
+          <div class="page-header">
+            <h1 class="page-title">Presensi</h1>
+            <p class="page-subtitle" id="currentDate">Senin, 1 Januari 2024</p>
+          </div>
+          
+          <div class="row">
+            <div class="col-lg-6">
+              <div class="presensi-camera">
+                <div class="camera-preview" id="cameraPreview">
+                  <div class="camera-placeholder" id="cameraPlaceholder">
+                    <i class="bi bi-camera"></i>
+                    <p>Klik untuk mengambil foto</p>
+                  </div>
+                  <video id="videoElement" autoplay playsinline style="display: none;"></video>
+                  <canvas id="canvasElement" style="display: none;"></canvas>
+                  <img id="photoPreview" style="display: none;" alt="Preview">
+                </div>
+                <div>
+                  <button type="button" class="btn-camera" id="btnStartCamera" onclick="startCamera()">
+                    <i class="bi bi-camera me-2"></i>Buka Kamera
+                  </button>
+                  <button type="button" class="btn-camera success hidden" id="btnCapture" onclick="capturePhoto()">
+                    <i class="bi bi-camera2 me-2"></i>Ambil Foto
+                  </button>
+                  <button type="button" class="btn-camera danger hidden" id="btnRetake" onclick="retakePhoto()">
+                    <i class="bi bi-arrow-repeat me-2"></i>Ulangi
+                  </button>
+                </div>
+                <div class="location-info" id="locationInfo">
+                  <i class="bi bi-geo-alt"></i>
+                  <span id="locationText">Mendapatkan lokasi...</span>
+                </div>
+              </div>
+            </div>
+            
+            <div class="col-lg-6">
+              <div class="card-custom">
+                <div class="card-header-custom">
+                  <h3 class="card-title-custom">
+                    <i class="bi bi-clock me-2"></i>Presensi Hari Ini
+                  </h3>
+                </div>
+                <div class="card-body-custom text-center">
+                  <div class="mb-4">
+                    <div class="display-4 fw-bold text-primary" id="currentTime">00:00:00</div>
+                    <div class="text-muted">Waktu Sekarang</div>
+                  </div>
+                  
+                  <div class="presensi-buttons">
+                    <button type="button" class="btn-presensi masuk" id="btnPresensiMasuk" onclick="doPresensi('masuk')">
+                      <i class="bi bi-box-arrow-in-right"></i>
+                      <span>Presensi Masuk</span>
+                    </button>
+                    <button type="button" class="btn-presensi keluar" id="btnPresensiKeluar" onclick="doPresensi('keluar')">
+                      <i class="bi bi-box-arrow-right"></i>
+                      <span>Presensi Keluar</span>
+                    </button>
+                  </div>
+                  
+                  <div class="mt-4" id="presensiStatus">
+                    <span class="status-badge pending">
+                      <i class="bi bi-clock me-1"></i>Belum Presensi
+                    </span>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Today's Presensi Info -->
+              <div class="card-custom mt-4">
+                <div class="card-header-custom">
+                  <h3 class="card-title-custom">
+                    <i class="bi bi-info-circle me-2"></i>Informasi
+                  </h3>
+                </div>
+                <div class="card-body-custom">
+                  <ul class="list-unstyled mb-0">
+                    <li class="mb-2">
+                      <i class="bi bi-clock text-primary me-2"></i>
+                      Jam masuk: <strong>09:00 WIB</strong>
+                    </li>
+                    <li class="mb-2">
+                      <i class="bi bi-geo-alt text-primary me-2"></i>
+                      Radius presensi: <strong>350 meter</strong> dari kantor
+                    </li>
+                    <li>
+                      <i class="bi bi-exclamation-triangle text-warning me-2"></i>
+                      Terlambat setelah pukul 09:00 WIB
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Cuti Page -->
+        <section class="page-section" id="page-cuti">
+          <div class="page-header">
+            <h1 class="page-title">Pengajuan Cuti & Izin</h1>
+            <p class="page-subtitle">Kelola pengajuan cuti dan izin Anda</p>
+          </div>
+          
+          <div class="row">
+            <div class="col-lg-5">
+              <div class="card-custom">
+                <div class="card-header-custom">
+                  <h3 class="card-title-custom">
+                    <i class="bi bi-plus-circle me-2"></i>Form Pengajuan
+                  </h3>
+                </div>
+                <div class="card-body-custom">
+                  <form id="cutiForm">
+                    <div class="mb-3">
+                      <label class="form-label-custom">Jenis Cuti</label>
+                      <select class="form-control form-control-custom" id="cutiJenis" required>
+                        <option value="">Pilih jenis cuti</option>
+                      </select>
+                    </div>
+                    <div class="row">
+                      <div class="col-6">
+                        <div class="mb-3">
+                          <label class="form-label-custom">Tanggal Mulai</label>
+                          <input type="date" class="form-control form-control-custom" id="cutiMulai" required>
+                        </div>
+                      </div>
+                      <div class="col-6">
+                        <div class="mb-3">
+                          <label class="form-label-custom">Tanggal Selesai</label>
+                          <input type="date" class="form-control form-control-custom" id="cutiSelesai" required>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="mb-3">
+                      <label class="form-label-custom">Alasan</label>
+                      <textarea class="form-control form-control-custom" id="cutiAlasan" rows="3" required></textarea>
+                    </div>
+                    <div class="mb-3">
+                      <label class="form-label-custom">Dokumen Pendukung (Opsional)</label>
+                      <div class="file-upload" onclick="document.getElementById('cutiDokumen').click()">
+                        <i class="bi bi-cloud-upload"></i>
+                        <p>Klik untuk upload file</p>
+                        <input type="file" id="cutiDokumen" accept=".pdf,.jpg,.jpeg,.png">
+                      </div>
+                      <small class="text-muted" id="cutiFileName"></small>
+                    </div>
+                    <button type="submit" class="btn btn-submit w-100">
+                      <i class="bi bi-send me-2"></i>Kirim Pengajuan
+                    </button>
+                  </form>
+                </div>
+              </div>
+            </div>
+            
+            <div class="col-lg-7">
+              <div class="card-custom">
+                <div class="card-header-custom">
+                  <h3 class="card-title-custom">
+                    <i class="bi bi-list-check me-2"></i>Riwayat Pengajuan
+                  </h3>
+                </div>
+                <div class="card-body-custom" id="cutiListContainer">
+                  <p class="text-muted text-center">Belum ada pengajuan cuti</p>
+                </div>
+              </div>
+              
+              <!-- Admin: Pending Approvals -->
+              <div class="card-custom mt-4 admin-only hidden" id="adminCutiApproval">
+                <div class="card-header-custom">
+                  <h3 class="card-title-custom">
+                    <i class="bi bi-hourglass-split me-2"></i>Menunggu Persetujuan
+                  </h3>
+                </div>
+                <div class="card-body-custom" id="pendingCutiList">
+                  <p class="text-muted text-center">Tidak ada pengajuan menunggu persetujuan</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Profile Page -->
+        <section class="page-section" id="page-profil">
+          <div class="page-header">
+            <h1 class="page-title">Pengaturan Profil</h1>
+            <p class="page-subtitle">Kelola informasi profil Anda</p>
+          </div>
+          
+          <div class="row justify-content-center">
+            <div class="col-lg-8">
+              <div class="card-custom">
+                <div class="card-body-custom">
+                  <form id="profileForm">
+                    <div class="text-center mb-4">
+                      <div class="photo-upload-wrapper">
+                        <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect fill='%230d6efd' width='100' height='100'/%3E%3Ctext x='50' y='50' dominant-baseline='central' text-anchor='middle' fill='white' font-size='40'%3EU%3C/text%3E%3C/svg%3E" 
+                             alt="Profile" class="profile-img" id="profilePhotoImg" onclick="document.getElementById('profilePhoto').click()">
+                        <div class="photo-upload-icon">
+                          <i class="bi bi-camera"></i>
+                        </div>
+                        <input type="file" id="profilePhoto" accept="image/*" style="display: none;">
+                      </div>
+                      <p class="text-muted mt-2 small">Klik foto untuk mengganti</p>
+                    </div>
+                    
+                    <div class="row">
+                      <div class="col-md-6">
+                        <div class="mb-3">
+                          <label class="form-label-custom">Nama Lengkap</label>
+                          <input type="text" class="form-control form-control-custom" id="profileNama" required>
+                        </div>
+                      </div>
+                      <div class="col-md-6">
+                        <div class="mb-3">
+                          <label class="form-label-custom">Jabatan</label>
+                          <input type="text" class="form-control form-control-custom" id="profileJabatan">
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div class="row">
+                      <div class="col-md-6">
+                        <div class="mb-3">
+                          <label class="form-label-custom">Tanggal Lahir</label>
+                          <input type="date" class="form-control form-control-custom" id="profileTanggalLahir">
+                        </div>
+                      </div>
+                      <div class="col-md-6">
+                        <div class="mb-3">
+                          <label class="form-label-custom">Jenis Kelamin</label>
+                          <select class="form-control form-control-custom" id="profileJenisKelamin">
+                            <option value="">Pilih</option>
+                            <option value="Laki-laki">Laki-laki</option>
+                            <option value="Perempuan">Perempuan</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div class="row">
+                      <div class="col-md-6">
+                        <div class="mb-3">
+                          <label class="form-label-custom">No. Telepon</label>
+                          <input type="tel" class="form-control form-control-custom" id="profileTelepon">
+                        </div>
+                      </div>
+                      <div class="col-md-6">
+                        <div class="mb-3">
+                          <label class="form-label-custom">Email</label>
+                          <input type="email" class="form-control form-control-custom" id="profileEmail" readonly>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                      <label class="form-label-custom">Alamat</label>
+                      <textarea class="form-control form-control-custom" id="profileAlamat" rows="3"></textarea>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-submit">
+                      <i class="bi bi-check-lg me-2"></i>Simpan Perubahan
+                    </button>
+                  </form>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- User Management Page (Admin) -->
+        <section class="page-section" id="page-user">
+          <div class="page-header">
+            <h1 class="page-title">Manajemen User</h1>
+            <p class="page-subtitle">Kelola data karyawan dan persetujuan pendaftaran</p>
+          </div>
+          
+          <div class="row">
+            <!-- Pending Registrations -->
+            <div class="col-lg-6 mb-4">
+              <div class="card-custom">
+                <div class="card-header-custom">
+                  <h3 class="card-title-custom">
+                    <i class="bi bi-person-plus me-2"></i>Pendaftaran Menunggu Persetujuan
+                  </h3>
+                </div>
+                <div class="card-body-custom">
+                  <div class="user-list" id="pendingRegList">
+                    <p class="text-muted text-center w-100">Tidak ada pendaftaran menunggu persetujuan</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- User List -->
+            <div class="col-lg-6 mb-4">
+              <div class="card-custom">
+                <div class="card-header-custom">
+                  <h3 class="card-title-custom">
+                    <i class="bi bi-people me-2"></i>Daftar Karyawan
+                  </h3>
+                </div>
+                <div class="card-body-custom">
+                  <div class="user-list" id="userList">
+                    <p class="text-muted text-center w-100">Memuat data...</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <!-- SweetAlert2 -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  
+  <!-- Custom Script (Pastikan file ini ada di folder yang sama) -->
+  <script src="script.js"></script>
+</body>
+</html>

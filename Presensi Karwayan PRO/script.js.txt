@@ -1,0 +1,965 @@
+// ============================================
+// KONFIGURASI
+// ============================================
+// GANTI DENGAN URL WEB APP GOOGLE APPS SCRIPT ANDA
+const SCRIPT_URL = 'https://script.google.com/macros/s/xxxxxxxxxxxxx/exec';
+
+// ============================================
+// VARIABEL GLOBAL
+// ============================================
+let currentUser = null;
+let currentLocation = null;
+let capturedPhoto = null;
+let videoStream = null;
+let attendanceChart = null;
+
+// ============================================
+// HELPER FUNGSI API (PENGHUBUNG BACKEND)
+// ============================================
+async function callGasApi(action, data = {}) {
+  // Tambahkan action ke data
+  const payload = { action: action, ...data };
+
+  try {
+    const response = await fetch(SCRIPT_URL, {
+      method: 'POST',
+      mode: 'cors', // Penting untuk cross-origin
+      cache: 'no-cache',
+      headers: {
+        'Content-Type': 'text/plain' // Google Apps Script lebih stabil menerima text/plain untuk JSON string
+      },
+      body: JSON.stringify(payload)
+    });
+    
+    if (!response.ok) {
+      throw new Error('Network response was not ok');
+    }
+
+    return await response.json();
+
+  } catch (error) {
+    console.error('Error calling API:', error);
+    return { success: false, message: 'Tidak dapat terhubung ke server. Periksa koneksi atau URL Script. Error: ' + error.message };
+  }
+}
+
+// ============================================
+// INISIALISASI
+// ============================================
+document.addEventListener('DOMContentLoaded', function() {
+  hideLoading();
+  updateCurrentTime();
+  setInterval(updateCurrentTime, 1000);
+  updateCurrentDate();
+  getLocation();
+  
+  // Form event listeners
+  document.getElementById('loginForm').addEventListener('submit', handleLogin);
+  document.getElementById('registerForm').addEventListener('submit', handleRegister);
+  document.getElementById('cutiForm').addEventListener('submit', handleCutiSubmit);
+  document.getElementById('profileForm').addEventListener('submit', handleProfileUpdate);
+  
+  // File input listeners
+  document.getElementById('cutiDokumen').addEventListener('change', function(e) {
+    const fileName = e.target.files[0] ? e.target.files[0].name : '';
+    document.getElementById('cutiFileName').textContent = fileName;
+  });
+  
+  document.getElementById('profilePhoto').addEventListener('change', handleProfilePhotoChange);
+  
+  // Date inputs min date
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('cutiMulai').setAttribute('min', today);
+  document.getElementById('cutiSelesai').setAttribute('min', today);
+  
+  document.getElementById('cutiMulai').addEventListener('change', function() {
+    document.getElementById('cutiSelesai').setAttribute('min', this.value);
+  });
+});
+
+// ============================================
+// UTILITY FUNCTIONS
+// ============================================
+function showLoading() {
+  document.getElementById('loadingSpinner').style.display = 'flex';
+}
+
+function hideLoading() {
+  document.getElementById('loadingSpinner').style.display = 'none';
+}
+
+function showAlert(title, text, icon) {
+  Swal.fire({
+    title: title,
+    text: text,
+    icon: icon,
+    confirmButtonColor: '#0d6efd'
+  });
+}
+
+function updateCurrentTime() {
+  const now = new Date();
+  const timeStr = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  document.getElementById('currentTime').textContent = timeStr;
+}
+
+function updateCurrentDate() {
+  const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+  const dateStr = new Date().toLocaleDateString('id-ID', options);
+  document.getElementById('currentDate').textContent = dateStr;
+}
+
+function formatDate(dateStr) {
+  const options = { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' };
+  return new Date(dateStr).toLocaleDateString('id-ID', options);
+}
+
+// ============================================
+// NAVIGATION
+// ============================================
+function showPage(pageName) {
+  // Update nav active state
+  document.querySelectorAll('.nav-link').forEach(function(link) {
+    link.classList.remove('active');
+    if (link.getAttribute('data-page') === pageName) {
+      link.classList.add('active');
+    }
+  });
+  
+  // Show/hide pages
+  document.querySelectorAll('.page-section').forEach(function(page) {
+    page.classList.remove('active');
+  });
+  document.getElementById('page-' + pageName).classList.add('active');
+  
+  // Load page-specific data
+  if (pageName === 'dashboard') {
+    loadDashboard();
+  } else if (pageName === 'presensi') {
+    loadPresensiPage();
+  } else if (pageName === 'cuti') {
+    loadCutiPage();
+  } else if (pageName === 'profil') {
+    loadProfilePage();
+  } else if (pageName === 'user') {
+    loadUserPage();
+  }
+}
+
+// ============================================
+// AUTH FUNCTIONS
+// ============================================
+function showLoginForm() {
+  document.getElementById('loginPage').classList.remove('hidden');
+  document.getElementById('registerPage').classList.add('hidden');
+}
+
+function showRegisterForm() {
+  document.getElementById('loginPage').classList.add('hidden');
+  document.getElementById('registerPage').classList.remove('hidden');
+}
+
+async function handleLogin(e) {
+  e.preventDefault();
+  showLoading();
+  
+  const username = document.getElementById('loginUsername').value;
+  const password = document.getElementById('loginPassword').value;
+  
+  const result = await callGasApi('login', { username, password });
+
+  hideLoading();
+  if (result.success) {
+    currentUser = result.user;
+    showApp();
+    showAlert('Berhasil!', 'Selamat datang, ' + currentUser.nama, 'success');
+  } else {
+    showAlert('Gagal!', result.message, 'error');
+  }
+}
+
+async function handleRegister(e) {
+  e.preventDefault();
+  showLoading();
+  
+  const userData = {
+    username: document.getElementById('regUsername').value,
+    password: document.getElementById('regPassword').value,
+    nama: document.getElementById('regNama').value,
+    email: document.getElementById('regEmail').value,
+    noTelepon: document.getElementById('regTelepon').value,
+    jenisKelamin: document.getElementById('regJenisKelamin').value,
+    jabatan: document.getElementById('regJabatan').value,
+    alamat: document.getElementById('regAlamat').value
+  };
+  
+  const result = await callGasApi('register', userData);
+  
+  hideLoading();
+  if (result.success) {
+    showAlert('Berhasil!', result.message, 'success');
+    showLoginForm();
+    document.getElementById('registerForm').reset();
+  } else {
+    showAlert('Gagal!', result.message, 'error');
+  }
+}
+
+function logout() {
+  Swal.fire({
+    title: 'Logout?',
+    text: 'Apakah Anda yakin ingin keluar?',
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonColor: '#0d6efd',
+    cancelButtonColor: '#6c757d',
+    confirmButtonText: 'Ya, Logout',
+    cancelButtonText: 'Batal'
+  }).then((result) => {
+    if (result.isConfirmed) {
+      currentUser = null;
+      document.getElementById('appWrapper').style.display = 'none';
+      document.getElementById('loginPage').classList.remove('hidden');
+      document.getElementById('loginForm').reset();
+    }
+  });
+}
+
+function showApp() {
+  document.getElementById('loginPage').classList.add('hidden');
+  document.getElementById('registerPage').classList.add('hidden');
+  document.getElementById('appWrapper').style.display = 'block';
+  
+  // Update nav profile
+  updateNavProfile();
+  
+  // Show/hide admin menu
+  if (currentUser.role === 'admin') {
+    document.querySelectorAll('.admin-only').forEach(function(el) {
+      el.classList.remove('hidden');
+    });
+  } else {
+    document.querySelectorAll('.admin-only').forEach(function(el) {
+      el.classList.add('hidden');
+    });
+  }
+  
+  // Load dashboard
+  showPage('dashboard');
+}
+
+function updateNavProfile() {
+  const initial = currentUser.nama.charAt(0).toUpperCase();
+  const defaultImg = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect fill='%230d6efd' width='100' height='100'/%3E%3Ctext x='50' y='50' dominant-baseline='central' text-anchor='middle' fill='white' font-size='40'%3E" + initial + "%3C/text%3E%3C/svg%3E";
+  
+  document.getElementById('navProfileImg').src = currentUser.foto || defaultImg;
+  document.getElementById('navProfileName').textContent = currentUser.nama;
+  document.getElementById('navProfileRole').textContent = currentUser.jabatan || 'Karyawan';
+}
+
+// ============================================
+// DASHBOARD
+// ============================================
+async function loadDashboard() {
+  showLoading();
+  
+  const data = await callGasApi('getDashboardData', { userId: currentUser.id });
+  
+  hideLoading();
+  if (data && data.profile) {
+    updateDashboard(data);
+  } else {
+    showAlert('Error!', 'Gagal memuat data dashboard', 'error');
+  }
+}
+
+function updateDashboard(data) {
+  const profile = data.profile;
+  const todayPresensi = data.todayPresensi;
+  const stats = data.stats;
+  const history = data.history;
+  
+  // Update profile card
+  const initial = profile.nama.charAt(0).toUpperCase();
+  const defaultImg = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect fill='%23ffffff' width='100' height='100'/%3E%3Ctext x='50' y='50' dominant-baseline='central' text-anchor='middle' fill='%231e40af' font-size='40'%3E" + initial + "%3C/text%3E%3C/svg%3E";
+  
+  document.getElementById('profileCardImg').src = profile.foto || defaultImg;
+  document.getElementById('profileCardName').textContent = profile.nama;
+  document.getElementById('profileCardRole').textContent = profile.jabatan || 'Karyawan';
+  document.getElementById('dashboardGreeting').textContent = profile.nama.split(' ')[0];
+  
+  // Update kuota cuti
+  document.getElementById('profileKuotaCuti').textContent = profile.kuotaCuti;
+  document.getElementById('profileHadir').textContent = stats.totalHadir;
+  
+  // Update stats
+  document.getElementById('statHadir').textContent = stats.totalHadir;
+  document.getElementById('statTepatWaktu').textContent = stats.totalHadir - stats.totalTerlambat;
+  document.getElementById('statTerlambat').textContent = stats.totalTerlambat;
+  document.getElementById('statMenitTerlambat').textContent = stats.totalMenitTerlambat;
+  
+  // Update today status
+  if (todayPresensi.hasPresensi) {
+    document.getElementById('todayJamMasuk').textContent = todayPresensi.jamMasuk || '--:--';
+    document.getElementById('todayJamKeluar').textContent = todayPresensi.jamKeluar || '--:--';
+    
+    if (stats.todayLate > 0) {
+      document.getElementById('todayLateInfo').style.display = 'block';
+      document.getElementById('todayLateMinutes').textContent = stats.todayLate;
+    } else {
+      document.getElementById('todayLateInfo').style.display = 'none';
+    }
+  } else {
+    document.getElementById('todayJamMasuk').textContent = '--:--';
+    document.getElementById('todayJamKeluar').textContent = '--:--';
+    document.getElementById('todayLateInfo').style.display = 'none';
+  }
+  
+  // Update recent history
+  if (history.length > 0) {
+    let html = '';
+    history.forEach(function(h) {
+      const statusClass = h.terlambat > 0 ? 'warning' : 'success';
+      const statusText = h.terlambat > 0 ? 'Terlambat ' + h.terlambat + 'm' : 'Tepat Waktu';
+      html += '<tr>' +
+                '<td>' + formatDate(h.tanggal) + '</td>' +
+                '<td>' + (h.jamMasuk || '--:--') + '</td>' +
+                '<td>' + (h.jamKeluar || '--:--') + '</td>' +
+                '<td><span class="status-badge ' + statusClass + '">' + statusText + '</span></td>' +
+              '</tr>';
+    });
+    document.getElementById('recentHistory').innerHTML = html;
+  }
+  
+  // Load chart
+  loadAttendanceChart();
+}
+
+async function loadAttendanceChart() {
+  const chartData = await callGasApi('getAttendanceChartData', { userId: currentUser.id });
+  if (chartData && chartData.labels) {
+    renderChart(chartData);
+  }
+}
+
+function renderChart(data) {
+  const ctx = document.getElementById('attendanceChart').getContext('2d');
+  
+  if (attendanceChart) {
+    attendanceChart.destroy();
+  }
+  
+  attendanceChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: data.labels,
+      datasets: [
+        {
+          label: 'Hadir',
+          data: data.hadir,
+          backgroundColor: 'rgba(13, 110, 253, 0.8)',
+          borderRadius: 8
+        },
+        {
+          label: 'Terlambat',
+          data: data.terlambat,
+          backgroundColor: 'rgba(245, 158, 11, 0.8)',
+          borderRadius: 8
+        },
+        {
+          label: 'Cuti',
+          data: data.cuti,
+          backgroundColor: 'rgba(16, 185, 129, 0.8)',
+          borderRadius: 8
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: 'top',
+          labels: {
+            usePointStyle: true,
+            padding: 20
+          }
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: {
+            stepSize: 1
+          }
+        }
+      }
+    }
+  });
+}
+
+// ============================================
+// PRESENSI
+// ============================================
+function loadPresensiPage() {
+  retakePhoto();
+  checkTodayPresensi();
+}
+
+function getLocation() {
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      function(position) {
+        currentLocation = {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude
+        };
+        document.getElementById('locationText').textContent = 
+          currentLocation.lat.toFixed(6) + ', ' + currentLocation.lng.toFixed(6);
+      },
+      function(error) {
+        document.getElementById('locationText').textContent = 'Gagal mendapatkan lokasi';
+      }
+    );
+  } else {
+    document.getElementById('locationText').textContent = 'Geolocation tidak didukung';
+  }
+}
+
+function startCamera() {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    showAlert('Error!', 'Browser tidak mendukung kamera. Pastikan HTTPS.', 'error');
+    return;
+  }
+
+  navigator.mediaDevices.getUserMedia({ 
+    video: { facingMode: 'user', width: 640, height: 480 } 
+  })
+  .then(function(stream) {
+    videoStream = stream;
+    const video = document.getElementById('videoElement');
+    video.srcObject = stream;
+    video.style.display = 'block';
+    document.getElementById('cameraPlaceholder').style.display = 'none';
+    document.getElementById('btnStartCamera').classList.add('hidden');
+    document.getElementById('btnCapture').classList.remove('hidden');
+    document.getElementById('btnRetake').classList.add('hidden');
+  })
+  .catch(function(error) {
+    console.error(error);
+    let msg = 'Tidak dapat mengakses kamera. ';
+    if (error.name === 'NotAllowedError') {
+      msg += 'Izin kamera ditolak. Berikan izin di browser.';
+    } else {
+      msg += 'Pastikan mengakses via HTTPS. Error: ' + error.name;
+    }
+    showAlert('Error!', msg, 'error');
+  });
+}
+
+function capturePhoto() {
+  const video = document.getElementById('videoElement');
+  const canvas = document.getElementById('canvasElement');
+  const photo = document.getElementById('photoPreview');
+  
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  canvas.getContext('2d').drawImage(video, 0, 0);
+  
+  capturedPhoto = canvas.toDataURL('image/jpeg', 0.8);
+  photo.src = capturedPhoto;
+  photo.style.display = 'block';
+  
+  video.style.display = 'none';
+  stopCamera();
+  
+  document.getElementById('btnCapture').classList.add('hidden');
+  document.getElementById('btnRetake').classList.remove('hidden');
+}
+
+function retakePhoto() {
+  capturedPhoto = null;
+  stopCamera();
+  
+  const video = document.getElementById('videoElement');
+  const canvas = document.getElementById('canvasElement');
+  const photo = document.getElementById('photoPreview');
+  
+  video.style.display = 'none';
+  canvas.style.display = 'none';
+  photo.style.display = 'none';
+  document.getElementById('cameraPlaceholder').style.display = 'block';
+  document.getElementById('btnStartCamera').classList.remove('hidden');
+  document.getElementById('btnCapture').classList.add('hidden');
+  document.getElementById('btnRetake').classList.add('hidden');
+}
+
+function stopCamera() {
+  if (videoStream) {
+    videoStream.getTracks().forEach(function(track) { track.stop(); });
+    videoStream = null;
+  }
+}
+
+async function checkTodayPresensi() {
+  const result = await callGasApi('checkPresensiToday', { userId: currentUser.id });
+  updatePresensiStatus(result);
+}
+
+function updatePresensiStatus(presensiData) {
+  const statusEl = document.getElementById('presensiStatus');
+  const btnMasuk = document.getElementById('btnPresensiMasuk');
+  const btnKeluar = document.getElementById('btnPresensiKeluar');
+  
+  if (!presensiData || !presensiData.hasPresensi) {
+    statusEl.innerHTML = '<span class="status-badge pending"><i class="bi bi-clock me-1"></i>Belum Presensi</span>';
+    btnMasuk.disabled = false;
+    btnKeluar.disabled = true;
+  } else if (!presensiData.jamKeluar) {
+    statusEl.innerHTML = '<span class="status-badge success"><i class="bi bi-check-circle me-1"></i>Sudah Presensi Masuk</span>';
+    btnMasuk.disabled = true;
+    btnKeluar.disabled = false;
+  } else {
+    statusEl.innerHTML = '<span class="status-badge success"><i class="bi bi-check-circle me-1"></i>Presensi Selesai</span>';
+    btnMasuk.disabled = true;
+    btnKeluar.disabled = true;
+  }
+}
+
+async function doPresensi(type) {
+  // Validasi
+  if (!capturedPhoto) {
+    showAlert('Peringatan!', 'Silakan ambil foto selfie terlebih dahulu', 'warning');
+    return;
+  }
+  
+  if (!currentLocation) {
+    showAlert('Peringatan!', 'Lokasi tidak terdeteksi. Pastikan GPS aktif.', 'warning');
+    return;
+  }
+  
+  showLoading();
+  
+  let result;
+  if (type === 'masuk') {
+    result = await callGasApi('presensiMasuk', {
+      userId: currentUser.id,
+      lat: currentLocation.lat,
+      lng: currentLocation.lng,
+      foto: capturedPhoto
+    });
+  } else {
+    result = await callGasApi('presensiKeluar', {
+      userId: currentUser.id,
+      lat: currentLocation.lat,
+      lng: currentLocation.lng,
+      foto: capturedPhoto
+    });
+  }
+
+  hideLoading();
+  
+  if (result.success) {
+    showAlert('Berhasil!', result.message, 'success');
+    checkTodayPresensi();
+    retakePhoto();
+  } else {
+    showAlert('Gagal!', result.message, 'error');
+  }
+}
+
+// ============================================
+// CUTI
+// ============================================
+async function loadCutiPage() {
+  loadJenisCuti();
+  loadCutiList();
+  
+  if (currentUser.role === 'admin') {
+    loadPendingCuti();
+  }
+}
+
+async function loadJenisCuti() {
+  const data = await callGasApi('getJenisCuti');
+  const select = document.getElementById('cutiJenis');
+  select.innerHTML = '<option value="">Pilih jenis cuti</option>';
+  
+  if (data) {
+    data.forEach(function(item) {
+      let txt = item.nama;
+      if(item.kuota > 0) {
+        txt += ' (Kuota: ' + item.kuota + ' hari)';
+      }
+      select.innerHTML += '<option value="' + item.nama + '">' + txt + '</option>';
+    });
+  }
+}
+
+async function loadCutiList() {
+  const isAdmin = currentUser.role === 'admin';
+  const data = await callGasApi('getCutiList', { userId: currentUser.id, isAdmin: isAdmin });
+  const container = document.getElementById('cutiListContainer');
+  
+  if (!data || data.length === 0) {
+    container.innerHTML = '<p class="text-muted text-center">Belum ada pengajuan cuti</p>';
+    return;
+  }
+  
+  let html = '';
+  data.forEach(function(item) {
+    const statusClass = item.status === 'approved' ? 'approved' : 
+                      item.status === 'rejected' ? 'rejected' : 'pending';
+    const statusText = item.status === 'approved' ? 'Disetujui' : 
+                     item.status === 'rejected' ? 'Ditolak' : 'Menunggu';
+    
+    html += '<div class="cuti-card">' +
+              '<div class="cuti-header">' +
+                '<div>' +
+                  '<div class="cuti-type">' + item.jenisCuti + '</div>' +
+                  '<div class="cuti-date">' + formatDate(item.tanggalMulai) + ' - ' + formatDate(item.tanggalSelesai) + ' (' + item.jumlahHari + ' hari)</div>' +
+                '</div>' +
+                '<span class="status-badge ' + statusClass + '">' + statusText + '</span>' +
+              '</div>' +
+              '<div class="cuti-body">' +
+                '<strong>Alasan:</strong> ' + item.alasan +
+              '</div>' +
+            '</div>';
+  });
+  
+  container.innerHTML = html;
+}
+
+async function loadPendingCuti() {
+  const data = await callGasApi('getCutiList', { userId: currentUser.id, isAdmin: true });
+  const container = document.getElementById('pendingCutiList');
+  
+  if (!data) return;
+  
+  const pending = data.filter(function(item) { return item.status === 'pending'; });
+  
+  if (pending.length === 0) {
+    container.innerHTML = '<p class="text-muted text-center">Tidak ada pengajuan menunggu persetujuan</p>';
+    return;
+  }
+  
+  let html = '';
+  pending.forEach(function(item) {
+    html += '<div class="cuti-card">' +
+              '<div class="cuti-header">' +
+                '<div>' +
+                  '<div class="cuti-type">' + item.jenisCuti + '</div>' +
+                  '<div class="cuti-date">' + item.nama + ' - ' + item.jabatan + '</div>' +
+                '</div>' +
+                '<span class="status-badge pending">Menunggu</span>' +
+              '</div>' +
+              '<div class="cuti-body">' +
+                '<p><strong>Tanggal:</strong> ' + formatDate(item.tanggalMulai) + ' - ' + formatDate(item.tanggalSelesai) + ' (' + item.jumlahHari + ' hari)</p>' +
+                '<p class="mb-2"><strong>Alasan:</strong> ' + item.alasan + '</p>' +
+                '<div class="mt-3">' +
+                  '<button class="btn btn-sm btn-success me-2" onclick="approveCuti(\'' + item.id + '\')">' +
+                    '<i class="bi bi-check-lg me-1"></i>Setujui' +
+                  '</button>' +
+                  '<button class="btn btn-sm btn-danger" onclick="rejectCuti(\'' + item.id + '\')">' +
+                    '<i class="bi bi-x-lg me-1"></i>Tolak' +
+                  '</button>' +
+                '</div>' +
+              '</div>' +
+            '</div>';
+  });
+  
+  container.innerHTML = html;
+}
+
+async function handleCutiSubmit(e) {
+  e.preventDefault();
+  showLoading();
+  
+  const cutiData = {
+    jenisCuti: document.getElementById('cutiJenis').value,
+    tanggalMulai: document.getElementById('cutiMulai').value,
+    tanggalSelesai: document.getElementById('cutiSelesai').value,
+    alasan: document.getElementById('cutiAlasan').value,
+    dokumen: ''
+  };
+  
+  // Handle file upload if exists
+  const fileInput = document.getElementById('cutiDokumen');
+  if (fileInput.files[0]) {
+    const reader = new FileReader();
+    reader.onload = async function(e) {
+      cutiData.dokumen = e.target.result;
+      await submitCutiRequest(cutiData);
+    };
+    reader.readAsDataURL(fileInput.files[0]);
+  } else {
+    await submitCutiRequest(cutiData);
+  }
+}
+
+async function submitCutiRequest(cutiData) {
+  const result = await callGasApi('submitCuti', {
+    userId: currentUser.id,
+    ...cutiData
+  });
+  
+  hideLoading();
+  if (result.success) {
+    showAlert('Berhasil!', result.message, 'success');
+    document.getElementById('cutiForm').reset();
+    document.getElementById('cutiFileName').textContent = '';
+    loadCutiPage();
+  } else {
+    showAlert('Gagal!', result.message, 'error');
+  }
+}
+
+async function approveCuti(cutiId) {
+  Swal.fire({
+    title: 'Setujui Cuti?',
+    text: 'Apakah Anda yakin ingin menyetujui pengajuan cuti ini?',
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonColor: '#10b981',
+    cancelButtonColor: '#6c757d',
+    confirmButtonText: 'Ya, Setujui',
+    cancelButtonText: 'Batal'
+  }).then(async (result) => {
+    if (result.isConfirmed) {
+      showLoading();
+      const res = await callGasApi('approveCuti', { cutiId: cutiId, adminId: currentUser.id });
+      hideLoading();
+      if (res.success) {
+        showAlert('Berhasil!', res.message, 'success');
+        loadCutiPage();
+      } else {
+        showAlert('Gagal!', res.message, 'error');
+      }
+    }
+  });
+}
+
+async function rejectCuti(cutiId) {
+  Swal.fire({
+    title: 'Tolak Cuti?',
+    text: 'Apakah Anda yakin ingin menolak pengajuan cuti ini?',
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#ef4444',
+    cancelButtonColor: '#6c757d',
+    confirmButtonText: 'Ya, Tolak',
+    cancelButtonText: 'Batal'
+  }).then(async (result) => {
+    if (result.isConfirmed) {
+      showLoading();
+      const res = await callGasApi('rejectCuti', { cutiId: cutiId, adminId: currentUser.id });
+      hideLoading();
+      if (res.success) {
+        showAlert('Berhasil!', res.message, 'success');
+        loadCutiPage();
+      } else {
+        showAlert('Gagal!', res.message, 'error');
+      }
+    }
+  });
+}
+
+// ============================================
+// PROFILE
+// ============================================
+async function loadProfilePage() {
+  const profile = await callGasApi('getUserProfile', { userId: currentUser.id });
+  if (profile) {
+    updateProfileForm(profile);
+  }
+}
+
+function updateProfileForm(profile) {
+  const initial = profile.nama.charAt(0).toUpperCase();
+  const defaultImg = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect fill='%230d6efd' width='100' height='100'/%3E%3Ctext x='50' y='50' dominant-baseline='central' text-anchor='middle' fill='white' font-size='40'%3E" + initial + "%3C/text%3E%3C/svg%3E";
+  
+  document.getElementById('profilePhotoImg').src = profile.foto || defaultImg;
+  document.getElementById('profileNama').value = profile.nama || '';
+  document.getElementById('profileJabatan').value = profile.jabatan || '';
+  document.getElementById('profileTanggalLahir').value = profile.tanggalLahir || '';
+  document.getElementById('profileJenisKelamin').value = profile.jenisKelamin || '';
+  document.getElementById('profileTelepon').value = profile.noTelepon || '';
+  document.getElementById('profileEmail').value = profile.email || '';
+  document.getElementById('profileAlamat').value = profile.alamat || '';
+}
+
+function handleProfilePhotoChange(e) {
+  const file = e.target.files[0];
+  if (file) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      document.getElementById('profilePhotoImg').src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+}
+
+async function handleProfileUpdate(e) {
+  e.preventDefault();
+  showLoading();
+  
+  const profileData = {
+    nama: document.getElementById('profileNama').value,
+    jabatan: document.getElementById('profileJabatan').value,
+    tanggalLahir: document.getElementById('profileTanggalLahir').value,
+    jenisKelamin: document.getElementById('profileJenisKelamin').value,
+    noTelepon: document.getElementById('profileTelepon').value,
+    alamat: document.getElementById('profileAlamat').value,
+    foto: ''
+  };
+  
+  // Handle photo if changed
+  const photoInput = document.getElementById('profilePhoto');
+  if (photoInput.files[0]) {
+    const reader = new FileReader();
+    reader.onload = async function(e) {
+      profileData.foto = e.target.result;
+      await submitProfileUpdate(profileData);
+    };
+    reader.readAsDataURL(photoInput.files[0]);
+  } else {
+    await submitProfileUpdate(profileData);
+  }
+}
+
+async function submitProfileUpdate(profileData) {
+  const result = await callGasApi('updateProfile', {
+    userId: currentUser.id,
+    ...profileData
+  });
+  
+  hideLoading();
+  if (result.success) {
+    showAlert('Berhasil!', result.message, 'success');
+    // Update current user
+    currentUser.nama = profileData.nama;
+    currentUser.jabatan = profileData.jabatan;
+    updateNavProfile();
+  } else {
+    showAlert('Gagal!', result.message, 'error');
+  }
+}
+
+// ============================================
+// USER MANAGEMENT
+// ============================================
+function loadUserPage() {
+  loadPendingRegistrations();
+  loadUserList();
+}
+
+async function loadPendingRegistrations() {
+  const data = await callGasApi('getPendingRegistrations');
+  const container = document.getElementById('pendingRegList');
+  
+  if (!data || data.length === 0) {
+    container.innerHTML = '<p class="text-muted text-center w-100">Tidak ada pendaftaran menunggu persetujuan</p>';
+    return;
+  }
+  
+  let html = '';
+  data.forEach(function(item) {
+    const initial = item.nama.charAt(0).toUpperCase();
+    html += '<div class="user-item">' +
+              '<div class="user-avatar">' + initial + '</div>' +
+              '<div class="user-info">' +
+                '<div class="user-name">' + item.nama + '</div>' +
+                '<div class="user-role">' + item.email + '</div>' +
+              '</div>' +
+              '<div class="user-actions">' +
+                '<button class="btn-action success" onclick="approveRegistration(\'' + item.id + '\')" title="Setujui">' +
+                  '<i class="bi bi-check-lg"></i>' +
+                '</button>' +
+                '<button class="btn-action danger" onclick="rejectRegistration(\'' + item.id + '\')" title="Tolak">' +
+                  '<i class="bi bi-x-lg"></i>' +
+                '</button>' +
+              '</div>' +
+            '</div>';
+  });
+  
+  container.innerHTML = html;
+}
+
+async function loadUserList() {
+  const data = await callGasApi('getAllUsers');
+  const container = document.getElementById('userList');
+  
+  if (!data || data.length === 0) {
+    container.innerHTML = '<p class="text-muted text-center w-100">Tidak ada data karyawan</p>';
+    return;
+  }
+  
+  let html = '';
+  data.forEach(function(item) {
+    if (!item.approved) return;
+    
+    const initial = item.nama.charAt(0).toUpperCase();
+    const roleClass = item.role === 'admin' ? 'text-primary' : '';
+    const roleText = item.role === 'admin' ? '(Admin)' : '';
+    
+    html += '<div class="user-item">' +
+              '<div class="user-avatar">' + initial + '</div>' +
+              '<div class="user-info">' +
+                '<div class="user-name">' + item.nama + '</div>' +
+                '<div class="user-role ' + roleClass + '">' + (item.jabatan || 'Karyawan') + ' ' + roleText + '</div>' +
+              '</div>' +
+            '</div>';
+  });
+  
+  container.innerHTML = html;
+}
+
+async function approveRegistration(regId) {
+  Swal.fire({
+    title: 'Setujui Pendaftaran?',
+    text: 'User akan dapat login setelah disetujui',
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonColor: '#10b981',
+    cancelButtonColor: '#6c757d',
+    confirmButtonText: 'Ya, Setujui',
+    cancelButtonText: 'Batal'
+  }).then(async (result) => {
+    if (result.isConfirmed) {
+      showLoading();
+      const res = await callGasApi('approveRegistration', { regId: regId });
+      hideLoading();
+      if (res.success) {
+        showAlert('Berhasil!', res.message, 'success');
+        loadUserPage();
+      } else {
+        showAlert('Gagal!', res.message, 'error');
+      }
+    }
+  });
+}
+
+async function rejectRegistration(regId) {
+  Swal.fire({
+    title: 'Tolak Pendaftaran?',
+    text: 'User akan menerima email notifikasi penolakan',
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#ef4444',
+    cancelButtonColor: '#6c757d',
+    confirmButtonText: 'Ya, Tolak',
+    cancelButtonText: 'Batal'
+  }).then(async (result) => {
+    if (result.isConfirmed) {
+      showLoading();
+      const res = await callGasApi('rejectRegistration', { regId: regId });
+      hideLoading();
+      if (res.success) {
+        showAlert('Berhasil!', res.message, 'success');
+        loadUserPage();
+      } else {
+        showAlert('Gagal!', res.message, 'error');
+      }
+    }
+  });
+}
